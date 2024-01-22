@@ -1,6 +1,6 @@
 Facebook Album Downloader (Windows only)
 ======
-
+<a href="https://colab.research.google.com/github/MrIbrahem/Facebook-Album-Downloader/blob/update/facebook_album_downloader.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 ## Dependencies
 1. Uses [Python 3](https://www.python.org/download/releases/3/)
 2. Uses `selenium chromedriver` - included in the repository
