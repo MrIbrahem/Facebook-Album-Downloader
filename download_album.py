@@ -39,97 +39,69 @@ class DownloadWorker(Thread):
 
 
 if __name__ == "__main__":
-    if not (Dir / 'chromedriver.exe').exists():
-        print(Dir / 'chromedriver.exe')
-        print("[chromedriver.exe not found in directory! It must be in this folder and named chromedriver.exe]")
-        print("[Download: http://chromedriver.storage.googleapis.com/index.html?path=2.20/ ]")
-        input("Press any key to exit...")
-    else:
-        print("[Facebook Album Downloader v1.1]")
-        start = timeit.default_timer()
 
-        extensions = webdriver.ChromeOptions()
-        # hide images
-        prefs = {
-            "profile.managed_default_content_settings.images": 2, 
-            "profile.default_content_setting_values.notifications": 2
-            }
+    print("[Facebook Album Downloader v1.1]")
+    start = timeit.default_timer()
 
-        extensions.add_experimental_option("prefs", prefs)
+    extensions = webdriver.ChromeOptions()
+    # hide images
+    prefs = {
+        "profile.managed_default_content_settings.images": 2, 
+        "profile.default_content_setting_values.notifications": 2
+        }
 
-        privateAlbum = 'n'
-        # privateAlbum = input("Private Album? (y/n)")
+    extensions.add_experimental_option("prefs", prefs)
 
-        # if privateAlbum == 'y':
-        #     username = input("Email: ")
-        #     password = input("Password: ")
+    browser = webdriver.Chrome(options=extensions)
+    # browser = webdriver.Chrome(options=extensions)
+    browser.implicitly_wait(1)
 
-        # albumLink = input("Album Link: ")
+    print("[Loading Album]")
+    browser.get(albumLink)
 
-        service = Service(executable_path='./chromedriver.exe')
-        browser = webdriver.Chrome(service=service, options=extensions)
-        # browser = webdriver.Chrome(options=extensions)
-        browser.implicitly_wait(7)
+    # get album name
+    albumName = browser.find_element_by_class_name("fbPhotoAlbumTitle").text
 
-        if privateAlbum == 'y':
-            browser.get(baseURL)
+    # create album path
+    if not (Dir / albumName).exists():
+        (Dir / albumName).mkdir(parents=True, exist_ok=True)
 
-            print("[Logging In]")
+    queue = Queue()
 
-            browser.find_element_by_id("email").send_keys(username)
-            browser.find_element_by_id("pass").send_keys(password)
-            browser.find_element_by_id("loginbutton").click()
-            all_cookies = browser.get_cookies()
+    for x in range(max_workers):
+        worker = DownloadWorker(queue)
+        worker.daemon = True
+        worker.start()
 
-            for s_cookie in all_cookies:
-                cookies[s_cookie["name"]] = s_cookie["value"]
+    print("[Getting Image Links]")
 
-        print("[Loading Album]")
-        browser.get(albumLink)
+    # scroll to bottom
+    previousHeight = 0
+    reachedEnd = 0
 
-        # get album name
-        albumName = browser.find_element_by_class_name("fbPhotoAlbumTitle").text
+    while reachedEnd != None:
+        browser.execute_script("window.scrollTo(0,document.body.scrollHeight);")
+        currentHeight = browser.execute_script("return document.body.scrollHeight")
 
-        # create album path
-        if not (Dir / albumName).exists():
-            (Dir / albumName).mkdir(parents=True, exist_ok=True)
+        if previousHeight == currentHeight:
+            reachedEnd = None
 
-        queue = Queue()
+        previousHeight = currentHeight
+        time.sleep(0.6)
 
-        for x in range(max_workers):
-            worker = DownloadWorker(queue)
-            worker.daemon = True
-            worker.start()
+    linkImages = browser.execute_script("list = []; Array.prototype.forEach.call(document.querySelectorAll('.uiMediaThumb'), function(el) { var src = el.getAttribute('id'); if(src && src.indexOf('pic_') > -1) list.push(src.split('_')[1]); }); return list;")
+    totalImages = len(linkImages)
 
-        print("[Getting Image Links]")
+    print("[Found: " + str(len(linkImages)) + "]")
 
-        # scroll to bottom
-        previousHeight = 0
-        reachedEnd = 0
+    for fullRes in linkImages:
+        queue.put(fullRes)
 
-        while reachedEnd != None:
-            browser.execute_script("window.scrollTo(0,document.body.scrollHeight);")
-            currentHeight = browser.execute_script("return document.body.scrollHeight")
+    browser.quit()
 
-            if previousHeight == currentHeight:
-                reachedEnd = None
+    print("[Downloading...]")
+    queue.join()
 
-            previousHeight = currentHeight
-            time.sleep(0.6)
-
-        linkImages = browser.execute_script("list = []; Array.prototype.forEach.call(document.querySelectorAll('.uiMediaThumb'), function(el) { var src = el.getAttribute('id'); if(src && src.indexOf('pic_') > -1) list.push(src.split('_')[1]); }); return list;")
-        totalImages = len(linkImages)
-
-        print("[Found: " + str(len(linkImages)) + "]")
-
-        for fullRes in linkImages:
-            queue.put(fullRes)
-
-        browser.quit()
-
-        print("[Downloading...]")
-        queue.join()
-
-        stop = timeit.default_timer()
-        print("[Time taken: %ss]" % str(stop - start))
-        input("Press any key to continue...")
+    stop = timeit.default_timer()
+    print("[Time taken: %ss]" % str(stop - start))
+    input("Press any key to continue...")
