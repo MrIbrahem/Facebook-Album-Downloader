@@ -18,7 +18,9 @@ cookies = {}
 baseURL = "http://facebook.com/"
 username = ""
 password = ""
-albumLink = "https://www.facebook.com/aalaaragabdesigns/posts/510169624089508"
+# albumLink = "https://www.facebook.com/aalaaragabdesigns/posts/510169624089508"
+albumLink = "https://www.facebook.com/aalaaragabdesigns/posts/pfbid0yL9chXPCfJro97h8WiBVDfMALG7YrPDzybNGgbVaBaABJjhXYJKkjTbiLzDBixapl"
+
 albumName = "u"
 albumUser = ""
 max_workers = 8
@@ -32,23 +34,19 @@ class DownloadWorker(Thread):
     def run(self):
         while True:
             link = self.queue.get()
-            r = requests.get('https://www.facebook.com/photo/download/?fbid=' + link, cookies=cookies)
+            r = requests.get("https://www.facebook.com/photo/download/?fbid=" + link, cookies=cookies)
             i = Image.open(StringIO(r.content))
-            i.save(Dir / albumName / (link + '.jpg'))
+            i.save(Dir / albumName / (link + ".jpg"))
             self.queue.task_done()
 
 
 if __name__ == "__main__":
-
     print("[Facebook Album Downloader v1.1]")
     start = timeit.default_timer()
 
     extensions = webdriver.ChromeOptions()
     # hide images
-    prefs = {
-        "profile.managed_default_content_settings.images": 2, 
-        "profile.default_content_setting_values.notifications": 2
-        }
+    prefs = {"profile.managed_default_content_settings.images": 2, "profile.default_content_setting_values.notifications": 2}
 
     extensions.add_experimental_option("prefs", prefs)
 
